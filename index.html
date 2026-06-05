@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>裂痕 · FRACTURE</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --bg-soft: #0f141d;
+    --panel: #11161f;
+    --line: #1c2735;
+    --text: #c8d3e0;
+    --text-dim: #6b7888;
+    --accent: #4fd1c5;
+    --accent-dim: #2a6e68;
+    --warn: #e06c75;
+    --gold: #e0b56c;
+    --glow: rgba(79, 209, 197, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    line-height: 1.85;
+    letter-spacing: 0.02em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(79,209,197,0.04), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(224,108,117,0.04), transparent 40%);
+  }
+
+  /* ---------- 顶部进度条 ---------- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    z-index: 50;
+    background: rgba(10,14,20,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .logo {
+    font-size: 13px;
+    letter-spacing: 0.45em;
+    color: var(--accent);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .logo span { color: var(--text-dim); letter-spacing: 0.2em; }
+
+  .ending-track {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ending-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+  }
+  .pips { display: flex; gap: 6px; }
+  .pip {
+    width: 22px; height: 5px;
+    border-radius: 3px;
+    background: var(--line);
+    transition: background 0.4s, box-shadow 0.4s;
+  }
+  .pip.good { background: var(--accent); box-shadow: 0 0 8px var(--glow); }
+  .pip.bad  { background: var(--warn);   box-shadow: 0 0 8px rgba(224,108,117,0.25); }
+  .pip.gray { background: var(--gold);   box-shadow: 0 0 8px rgba(224,181,108,0.2); }
+
+  .count {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .count b { color: var(--accent); }
+
+  /* ---------- 主体 ---------- */
+  main {
+    max-width: 760px;
+    width: 100%;
+    padding: 56px 24px 120px;
+    flex: 1;
+  }
+
+  .scene { animation: fadein 0.7s ease; }
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .scene-tag {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--accent-dim);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+
+  .scene-text p {
+    margin-bottom: 18px;
+    font-size: 17px;
+    color: var(--text);
+  }
+  .scene-text p.dim { color: var(--text-dim); font-size: 15px; }
+  .scene-text .speaker { color: var(--accent); font-weight: 600; }
+  .scene-text .sys {
+    display: block;
+    border-left: 2px solid var(--accent-dim);
+    padding: 4px 0 4px 16px;
+    margin: 22px 0;
+    color: var(--accent);
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    font-family: "SF Mono", "Consolas", monospace;
+    background: linear-gradient(90deg, var(--glow), transparent);
+  }
+
+  .prompt {
+    margin: 38px 0 22px;
+    font-size: 14px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .choices { display: flex; flex-direction: column; gap: 14px; }
+  .choice {
+    text-align: left;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 18px 22px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    line-height: 1.6;
+  }
+  .choice:hover {
+    border-color: var(--accent-dim);
+    background: var(--bg-soft);
+    transform: translateX(4px);
+    box-shadow: -3px 0 0 var(--accent);
+  }
+  .choice .hint {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    letter-spacing: 0.03em;
+  }
+
+  /* ---------- 结局界面 ---------- */
+  .ending-screen { text-align: center; padding-top: 30px; }
+  .ending-screen .verdict {
+    font-size: 12px; letter-spacing: 0.4em;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+  .ending-screen.good .verdict { color: var(--accent); }
+  .ending-screen.bad  .verdict { color: var(--warn); }
+  .ending-screen.gray .verdict { color: var(--gold); }
+  .ending-screen h1 {
+    font-size: 30px; font-weight: 700;
+    letter-spacing: 0.08em; margin-bottom: 26px;
+  }
+  .ending-screen .epilogue {
+    font-size: 16px; color: var(--text);
+    text-align: left; max-width: 580px; margin: 0 auto 14px;
+  }
+  .ending-screen .reflect {
+    font-size: 14px; color: var(--text-dim);
+    font-style: italic; max-width: 560px;
+    margin: 30px auto; padding: 18px 20px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .actions { margin-top: 40px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    background: transparent;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    padding: 13px 28px;
+    border-radius: 8px;
+    font-size: 14px; font-family: inherit;
+    letter-spacing: 0.12em; cursor: pointer;
+    transition: all 0.25s;
+  }
+  .btn:hover { background: var(--accent-dim); color: #fff; box-shadow: 0 0 16px var(--glow); }
+  .btn.ghost { border-color: var(--line); color: var(--text-dim); }
+  .btn.ghost:hover { border-color: var(--text-dim); background: var(--bg-soft); color: var(--text); box-shadow: none; }
+
+  /* ---------- 结局图鉴 ---------- */
+  .gallery {
+    margin-top: 44px;
+    border-top: 1px solid var(--line);
+    padding-top: 28px;
+  }
+  .gallery h3 {
+    font-size: 12px; letter-spacing: 0.3em; color: var(--text-dim);
+    text-transform: uppercase; margin-bottom: 18px; text-align: center;
+  }
+  .gallery-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; background: var(--panel);
+    transition: all 0.3s;
+  }
+  .card.locked { opacity: 0.4; }
+  .card .ix { font-size: 11px; color: var(--text-dim); letter-spacing: 0.2em; }
+  .card .nm { font-size: 14px; margin-top: 6px; }
+  .card.unlocked.good { border-color: var(--accent-dim); }
+  .card.unlocked.good .nm { color: var(--accent); }
+  .card.unlocked.bad  { border-color: rgba(224,108,117,0.4); }
+  .card.unlocked.bad  .nm { color: var(--warn); }
+  .card.unlocked.gray { border-color: rgba(224,181,108,0.4); }
+  .card.unlocked.gray .nm { color: var(--gold); }
+  .card .locktxt { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+
+  /* ---------- 标题页 ---------- */
+  .title-screen { text-align: center; padding-top: 8vh; }
+  .title-screen .big {
+    font-size: 58px; font-weight: 800; letter-spacing: 0.3em;
+    color: var(--text); margin-bottom: 6px;
+  }
+  .title-screen .sub {
+    font-size: 14px; letter-spacing: 0.55em; color: var(--accent);
+    margin-bottom: 40px;
+  }
+  .title-screen .year {
+    font-size: 13px; color: var(--text-dim); letter-spacing: 0.15em;
+    max-width: 540px; margin: 0 auto 44px; line-height: 2;
+  }
+  .title-screen .roster {
+    max-width: 540px; margin: 0 auto 44px; text-align: left;
+    border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px;
+    background: var(--panel);
+  }
+  .title-screen .roster .rt {
+    font-size: 11px; letter-spacing: 0.3em; color: var(--text-dim);
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .title-screen .roster .person { font-size: 14px; margin-bottom: 9px; }
+  .title-screen .roster .person b { color: var(--accent); font-weight: 600; }
+  .title-screen .roster .person span { color: var(--text-dim); }
+
+  .footnote { text-align: center; color: var(--text-dim); font-size: 11px; padding: 30px; letter-spacing: 0.1em; }
+
+  @media (max-width: 600px) {
+    .topbar-inner { flex-wrap: wrap; gap: 10px; padding: 12px 16px; }
+    .pip { width: 16px; }
+    main { padding: 36px 18px 100px; }
+    .title-screen .big { font-size: 40px; }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="logo">裂痕 <span>FRACTURE</span></div>
+      <div class="ending-track">
+        <span class="ending-label">结局收集</span>
+        <div class="pips" id="pips"></div>
+      </div>
+      <div class="count">已解锁 <b id="count">0</b> / 6</div>
+    </div>
+  </div>
+
+  <main id="app"></main>
+
+  <div class="footnote">这是一个关于战争、亲情与科技的思想实验 · 没有标准答案</div>
+
+<script>
+/* =========================================================
+   裂痕 · FRACTURE
+   一个关于未来两岸战争中，一个跨海家庭的互动小说
+   ========================================================= */
+
+/* ---------- 结局定义 ---------- */
+const ENDINGS = {
+  E1: { name: "回家的路",   type: "good", blurb: "你选择了人，而不是旗帜。" },
+  E2: { name: "数字方舟",   type: "good", blurb: "肉体会死，但你们没有失去彼此。" },
+  E3: { name: "忠诚的灰烬", type: "bad",  blurb: "你赢得了战争，输掉了所有亲人。" },
+  E4: { name: "第二个我",   type: "bad",  blurb: "你成了一个不再是你的东西。" },
+  E5: { name: "停火的人",   type: "gray", blurb: "你既非英雄，也非叛徒。" },
+  E6: { name: "归零",       type: "gray", blurb: "当所有人都错了，沉默是唯一的清白。" },
+};
+
+/* ---------- 进度持久化 ---------- */
+const SAVE_KEY = "fracture_endings_v1";
+function loadUnlocked() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || []; }
+  catch { return []; }
+}
+function saveUnlocked(arr) {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(arr)); } catch {}
+}
+let unlocked = loadUnlocked();
+
+/* ---------- 全局状态（单局内） ---------- */
+let state = {};
+function resetState() {
+  state = {
+    trustFather: 0,   // 与父亲（台湾·反战工程师）的信任
+    trustBrother: 0,  // 与哥哥（大陆·数字生命研究员）的信任
+    loyalty: 0,       // 对“国家/阵营”的忠诚倾向
+    humanity: 0,      // 对“人”本身的坚持
+    uploaded: false,  // 是否接受过意识上传
+    cloneUsed: false, // 是否动用了克隆士兵
+  };
+}
+
+/* =========================================================
+   剧情节点
+   每个节点: { tag, text:[...], prompt, choices:[{label,hint,go,fx}] }
+   或结局节点: { ending:"E1" }
+   ========================================================= */
+const NODES = {
+
+  start: {
+    tag: "序章 · 公元 2049 · 台北",
+    text: [
+      `<p>战争在第七天清晨抵达台北的时候，并没有想象中的火光。</p>`,
+      `<p>只有全城的屏幕同时熄灭，然后亮起同一行字。</p>`,
+      `<p class="sys">[ 联合指挥网络 · 已接管本区通讯 ]</p>`,
+      `<p>你叫<span class="speaker">林深</span>，二十六岁。父亲是土生土长的台北人，母亲来自福建。三年前，哥哥<span class="speaker">林屿</span>去了对岸——他在那里做"数字生命"的研究，把临终者的意识备份成数据。</p>`,
+      `<p>战争开始的那天，你的家，被一条海峡劈成了两半。</p>`,
+      `<p class="dim">而你，因为半年前那场车祸，颅内植入了一枚实验性的脑机接口。此刻，它正在自动连入那张刚刚覆盖全城的网络。</p>`,
+    ],
+    prompt: "接口在你脑海里低声询问——",
+    choices: [
+      { label: "接入网络。我要知道发生了什么。", hint: "主动连入联合指挥网络", go: "net_in", fx: s => s.humanity += 0 },
+      { label: "切断它。我不想成为这场战争的一部分。", hint: "物理隔离脑机接口", go: "offline", fx: s => s.loyalty -= 1 },
+    ],
+  },
+
+  net_in: {
+    tag: "第一章 · 接入",
+    text: [
+      `<p>世界在你脑后展开成一片流动的光。你"看见"了整座城市的数据脉络——防空系统、医院的生命维持、还有无数家庭此刻正在发送的最后讯息。</p>`,
+      `<p>一条私密信道突然亮起，来自一个你以为再也连不上的地址。</p>`,
+      `<p><span class="speaker">林屿（哥哥）：</span>"小深，是你吗？接口认出了你的脑波。听着，时间不多——我在对岸的项目被军方接管了。他们要用'数字生命'技术做一件事。"</p>`,
+      `<p><span class="speaker">林屿：</span>"他们要把阵亡士兵的意识，反复上传进克隆体，做成不会拒绝命令、不会恐惧、可以无限复活的兵。我参与了。小深……我亲手写了那套唤醒程序。"</p>`,
+    ],
+    prompt: "哥哥的声音在颤抖。你——",
+    choices: [
+      { label: "\"哥，你疯了吗？那还是人吗？\"", hint: "质问他的伦理底线", go: "brother_ethics", fx: s => { s.humanity += 1; } },
+      { label: "\"先别管对错，告诉我怎么阻止。\"", hint: "把哥哥当成盟友", go: "brother_ally", fx: s => { s.trustBrother += 1; } },
+      { label: "\"你在对岸为他们造兵——你已经选边了。\"", hint: "把哥哥视为敌人", go: "brother_enemy", fx: s => { s.loyalty += 1; s.trustBrother -= 1; } },
+    ],
+  },
+
+  offline: {
+    tag: "第一章 · 离线",
+    text: [
+      `<p>你用力按下耳后的硬件开关。光退去了，世界重新变得迟钝而真实。</p>`,
+      `<p>你想做一个普通人，在乱世里只管护住身边的人。可门外传来沉重的脚步声——三个穿着联合军制服的人，敲响了你家的门。</p>`,
+      `<p><span class="speaker">军官：</span>"林深先生。你颅内的接口是稀缺的战时资源。我们需要它，也需要你。拒绝，将被视为通敌。"</p>`,
+      `<p class="dim">他们身后，你看见父亲被两名士兵架着。他的眼神示意你：不要妥协。</p>`,
+    ],
+    prompt: "父亲在用口型说\"跑\"。你——",
+    choices: [
+      { label: "重新接入网络，攻击他们的指挥链路。", hint: "用接口反击", go: "net_in", fx: s => { s.humanity += 1; s.loyalty -= 1; } },
+      { label: "投降，但要求他们先放了父亲。", hint: "用自己换父亲", go: "father_trade", fx: s => { s.trustFather += 1; } },
+      { label: "什么都不做。战争里，反抗只会害死所有人。", hint: "彻底的服从", go: "submit", fx: s => { s.loyalty += 2; s.humanity -= 1; } },
+    ],
+  },
+
+  /* ---- 哥哥线 ---- */
+  brother_ethics: {
+    tag: "第二章 · 唤醒程序",
+    text: [
+      `<p><span class="speaker">林屿：</span>"是不是人……我每天都在问自己。小深，被唤醒的那些意识，会在第一秒哭着喊妈妈，然后在第三秒被覆写成只懂服从的士兵。我把这叫做'清醒的两秒'。"</p>`,
+      `<p><span class="speaker">林屿：</span>"我在程序里留了一个后门。如果你能从台北这一侧接入，我们可以一起触发它——让所有克隆兵在战场上保留那'两秒的清醒'。他们会想起自己是谁，然后……可能集体停止战斗，也可能集体崩溃。我赌不准。"</p>`,
+      `<p class="sys">[ 检测到后门密钥 · 需要双端同时授权 ]</p>`,
+    ],
+    prompt: "这可能终结战争，也可能制造一场数字屠杀。",
+    choices: [
+      { label: "和哥哥一起触发后门。赌人性。", hint: "信任那\"两秒的清醒\"", go: "backdoor", fx: s => { s.trustBrother += 2; s.humanity += 2; } },
+      { label: "拒绝。不能拿几十万意识当赌注。", hint: "守住自己的底线", go: "refuse_backdoor", fx: s => { s.humanity += 1; s.trustBrother -= 1; } },
+    ],
+  },
+
+  brother_ally: {
+    tag: "第二章 · 同谋",
+    text: [
+      `<p><span class="speaker">林屿：</span>"好。我就知道你会帮我。"他笑了一声，那笑声里有三年没听过的、属于哥哥的温度。</p>`,
+      `<p><span class="speaker">林屿：</span>"我在程序里留了后门，能让克隆兵恢复'清醒的两秒'。但触发它，对岸会立刻定位到我。小深，如果我们做了这件事，我大概……回不来了。"</p>`,
+      `<p class="dim">你忽然意识到，哥哥从一开始，就没打算活着走出那座实验室。</p>`,
+    ],
+    prompt: "你听懂了他没说出口的话。",
+    choices: [
+      { label: "\"那就一起做。哥，我替你记得你是谁。\"", hint: "成全他的牺牲", go: "backdoor", fx: s => { s.trustBrother += 2; s.humanity += 1; } },
+      { label: "\"不行。我先把你的意识备份出来，再触发。\"", hint: "想救哥哥", go: "save_brother", fx: s => { s.trustBrother += 1; } },
+    ],
+  },
+
+  brother_enemy: {
+    tag: "第二章 · 决裂",
+    text: [
+      `<p><span class="speaker">林屿：</span>"……选边？小深，我去对岸，是因为那里有人愿意给数字生命一个法律身份。妈走的时候，我只来得及备份她的意识碎片——在台北，那是违法的。"</p>`,
+      `<p>你愣住了。母亲的死讯，你以为只有你一个人在深夜里反复咀嚼。</p>`,
+      `<p><span class="speaker">林屿：</span>"她还在我手里，小深。一段不完整的、会笑会喊你乳名的代码。你要我交给军方当武器实验体，还是……你过来，我们一起把她藏好？"</p>`,
+    ],
+    prompt: "母亲的\"残响\"，成了战争里的筹码。",
+    choices: [
+      { label: "放下立场，去保护母亲的数据。", hint: "血缘高于阵营", go: "brother_ally", fx: s => { s.trustBrother += 2; s.loyalty -= 1; s.humanity += 1; } },
+      { label: "向联合军举报哥哥的位置，换取自身安全。", hint: "彻底背叛血缘", go: "betray_brother", fx: s => { s.loyalty += 2; s.trustBrother -= 3; } },
+    ],
+  },
+
+  /* ---- 父亲线 ---- */
+  father_trade: {
+    tag: "第二章 · 交换",
+    text: [
+      `<p>他们放开了父亲。你被铐上抑制环，押进一辆装甲车。临走前，父亲抓住你的手腕，往你掌心塞了一枚芯片。</p>`,
+      `<p><span class="speaker">林国栋（父亲）：</span>"这是我做了一辈子的东西——一个能让所有联网武器'失明'三分钟的病毒。我本想带进坟墓。现在它是你的了。"</p>`,
+      `<p><span class="speaker">父亲：</span>"小深，爸不要你当英雄。三分钟，够你跑，也够你做一件改变战局的事。怎么用，你自己决定。但记住——别为了一个'对'，弄丢了你自己。"</p>`,
+    ],
+    prompt: "装甲车启动了。芯片在你掌心发烫。",
+    choices: [
+      { label: "用病毒瘫痪武器网络，制造停火窗口。", hint: "赌一次和平", go: "ceasefire_window", fx: s => { s.trustFather += 2; s.humanity += 1; } },
+      { label: "保留病毒，先设法联系哥哥。", hint: "把两条线接起来", go: "net_in", fx: s => { s.trustFather += 1; } },
+    ],
+  },
+
+  submit: {
+    tag: "第二章 · 螺丝",
+    text: [
+      `<p>你成了联合军网络战部队的一颗螺丝。他们撬开你的接口，把你接入"灯塔"——一套用人脑做协处理器的指挥系统。</p>`,
+      `<p>你日复一日地为无人机标定坐标。你告诉自己：这只是数据，不是人。</p>`,
+      `<p class="dim">直到某天，系统弹出一份高价值目标档案。照片上，是你的父亲——"危险的技术异见者，制造反战病毒"。指令要求：由你，亲自标定。</p>`,
+      `<p class="sys">[ 待确认目标 · 林国栋 · 等待操作员授权 ]</p>`,
+    ],
+    prompt: "光标在父亲的脸上闪烁。",
+    choices: [
+      { label: "拒绝指令，烧毁自己的接口。", hint: "用毁掉自己来抗命", go: "burn_self", fx: s => { s.humanity += 3; s.loyalty -= 2; } },
+      { label: "执行。我已经不是林深了，我是'灯塔'。", hint: "彻底交出人性", go: "E3", fx: s => { s.loyalty += 3; s.humanity -= 3; } },
+    ],
+  },
+
+  /* ---- 中段汇流 ---- */
+  backdoor: {
+    tag: "第三章 · 两秒的清醒",
+    text: [
+      `<p>你和哥哥的密钥在网络深处相遇，像两只手在黑暗里扣住。后门开启的瞬间，整个战场的克隆兵同时怔住。</p>`,
+      `<p class="sys">[ 全域唤醒 · 战斗序列中断 · 意识回流中…… ]</p>`,
+      `<p>有人扔下了枪，有人跪在地上痛哭，有人喊着陌生的名字冲向同样怔住的"敌人"。也有人，承受不住骤然回归的记忆，当场崩溃。</p>`,
+      `<p>那"两秒"被你和哥哥强行延长成了永恒。战争机器，第一次因为"人想起了自己是谁"而卡住。</p>`,
+      `<p><span class="speaker">林屿：</span>"成了……小深，他们正在定位我。听着，妈的备份，我刚才一起传给你了。带她回家。"</p>`,
+      `<p class="dim">信道那头，传来门被撞开的声音。然后是静默。</p>`,
+    ],
+    prompt: "哥哥的信号消失了。你掌心里，多了一段温热的数据。",
+    choices: [
+      { label: "活下去，带着母亲的残响和这场清醒回家。", hint: "结局判定", go: "judge_backdoor", fx: s => { s.humanity += 1; } },
+    ],
+  },
+
+  refuse_backdoor: {
+    tag: "第三章 · 不赌",
+    text: [
+      `<p><span class="speaker">林屿：</span>"……我懂。几十万意识，确实不该由我们两个来决定生死。"</p>`,
+      `<p>你切断了后门授权。战争继续，克隆兵继续以两秒为周期被覆写、冲锋、倒下、再复活。你保住了自己的清白，却没能改变任何事。</p>`,
+      `<p>三周后，联合军攻破了哥哥的实验室。你在网络上眼睁睁看着他的信号一个一个地灭掉——他在最后时刻，把所有"清醒程序"的源码公开广播了出去，连同母亲的备份。</p>`,
+      `<p class="dim">他用自己的命，把选择权交还给了每一个普通士兵。而你，只是一个旁观者。</p>`,
+    ],
+    prompt: "战争还会打很久。但有些东西，已经不一样了。",
+    choices: [
+      { label: "把哥哥广播的源码，一份一份送进每个士兵的接口。", hint: "继承他的遗志", go: "E5", fx: s => { s.humanity += 2; } },
+      { label: "删掉一切，回归普通人的生活，假装从未发生。", hint: "选择遗忘", go: "E6", fx: s => { s.humanity -= 1; } },
+    ],
+  },
+
+  save_brother: {
+    tag: "第三章 · 备份",
+    text: [
+      `<p>你抢在触发后门前，强行接入哥哥的终端，把他的意识完整地拷贝进你的接口。这是一场危险的赌博——一颗脑子里，住进了两个人。</p>`,
+      `<p>后门触发了。"两秒的清醒"席卷战场。而对岸的军队，循着信号源冲进了实验室——他们抓到的，是一具刚刚被抽空了意识的躯壳。</p>`,
+      `<p><span class="speaker">林屿（在你脑中）：</span>"……成功了？我能感觉到你的心跳，小深。这感觉真奇怪——我死了，又没死。"</p>`,
+      `<p class="dim">你不知道这算救了他，还是把他困在了一个永远醒不来的梦里。但至少，他的声音还在。</p>`,
+    ],
+    prompt: "你的颅内，从此有了两个灵魂。",
+    choices: [
+      { label: "带着哥哥的意识，去找一具合法的数字生命载体。", hint: "结局判定", go: "judge_save", fx: s => { s.uploaded = true; } },
+    ],
+  },
+
+  betray_brother: {
+    tag: "第三章 · 举报",
+    text: [
+      `<p>你把哥哥的坐标发给了联合军。回执很快：奖励、安全许可、以及一句"感谢您的忠诚"。</p>`,
+      `<p>那天夜里，对岸的实验室被精确打击夷为平地。哥哥，连同他手中母亲的备份，一起化作了数据洪流里再也打捞不起的噪声。</p>`,
+      `<p class="dim">你得到了梦寐以求的安全。代价是，你成了这个家最后一个活着的人，也是唯一一个，亲手把家人送进火里的人。</p>`,
+    ],
+    prompt: "联合军给了你一个新职位。",
+    choices: [
+      { label: "接受晋升，成为他们最可靠的网络战军官。", hint: "在忠诚里活下去", go: "E3", fx: s => { s.loyalty += 3; } },
+      { label: "拿着奖励连夜出逃，再也不为任何一方效力。", hint: "带着罪疚逃亡", go: "E6", fx: s => { s.humanity -= 1; } },
+    ],
+  },
+
+  ceasefire_window: {
+    tag: "第三章 · 三分钟",
+    text: [
+      `<p>你在城市最高处插入父亲的芯片。三分钟里，海峡两岸所有联网武器同时"失明"——导弹失去制导，无人机集体盘旋，指挥屏幕一片雪花。</p>`,
+      `<p class="sys">[ 全域武器网络 · 离线 · 倒计时 03:00 ]</p>`,
+      `<p>你用这三分钟，把同一段话推送进两岸每一块还亮着的屏幕：</p>`,
+      `<p><span class="speaker">你：</span>"我是林深。我爸是台北人，我妈是福建人，我哥在对岸。这场仗，正在杀死同一个家庭。现在，你们的武器看不见了。这三分钟，请抬头看看身边的人——然后决定，要不要继续。"</p>`,
+    ],
+    prompt: "三分钟很短。但足够让人犹豫。而战争，最怕犹豫。",
+    choices: [
+      { label: "相信人会犹豫。放下一切，去找还活着的家人。", hint: "结局判定", go: "judge_ceasefire", fx: s => { s.humanity += 2; } },
+    ],
+  },
+
+  burn_self: {
+    tag: "第三章 · 烧毁",
+    text: [
+      `<p>你拒绝授权。在他们重新夺取控制权之前，你向自己的接口灌入了过载电流。</p>`,
+      `<p>"灯塔"系统因为失去你这颗核心处理器而瘫痪了四十分钟。父亲在这四十分钟里逃出了搜捕圈。</p>`,
+      `<p class="dim">而你，颅内的接口烧成了一团焦炭。你活了下来，却永远失去了进入网络的能力——也永远失去了，再"看见"哥哥和母亲数据残响的可能。</p>`,
+      `<p>你用一次自我了断式的反抗，救了父亲，也把自己从这场科技战争里，彻底地放逐了出去。</p>`,
+    ],
+    prompt: "世界重新变回了肉眼可见的样子。",
+    choices: [
+      { label: "回到父亲身边，做一个再普通不过的人。", hint: "结局判定", go: "judge_burn", fx: s => { s.humanity += 1; } },
+    ],
+  },
+
+  /* ---- 结局判定节点 ---- */
+  judge_backdoor: {
+    router: s => (s.humanity >= 3 && s.trustBrother >= 2) ? "E1" : "E5",
+  },
+  judge_save: {
+    router: s => "E2",
+  },
+  judge_ceasefire: {
+    router: s => (s.humanity >= 3 && s.trustFather >= 2) ? "E1" : "E5",
+  },
+  judge_burn: {
+    router: s => (s.humanity >= 4) ? "E1" : "E6",
+  },
+
+  /* ---- 结局正文 ---- */
+  E1: {
+    ending: "E1",
+    epilogue: [
+      `<p>停火来得很慢，像退潮。没有谁宣布胜利，因为所有人都输了，又都活了下来。</p>`,
+      `<p>你回到台北的老屋。父亲在阳台上种回了那盆被炮火震落的茉莉。你把哥哥留下的、母亲的那段不完整的备份，接进了客厅那台旧音箱。</p>`,
+      `<p>每天清晨，它会用妈妈的声音，喊一遍你的乳名。不完整，会卡顿，有时只是一段笑声。</p>`,
+      `<p>父亲说，这样就够了。一个家，不需要完整，只需要还在。</p>`,
+    ],
+    reflect: "你选择了人，而不是旗帜。在一个所有人都被要求选边的时代，你最终站在了「家」那一边——这或许不是最勇敢的答案，却是最难的那一个。",
+  },
+  E2: {
+    ending: "E2",
+    epilogue: [
+      `<p>你带着哥哥的意识，辗转找到了一座承认数字生命的中立城市。在那里，林屿被注入一具合法的载体——一个温和的、会眨眼的人形终端。</p>`,
+      `<p>他不再是血肉之躯。但他会记得你们小时候一起翻过的那道墙，会在你失眠时调暗灯光，会用母亲那段残响给你唱跑调的摇篮曲。</p>`,
+      `<p>"我们失去了很多，"他说，"国家、身体、原本的人生。但我们没有失去彼此。在这个时代，这已经是一种奢侈。"</p>`,
+      `<p class="dim">肉体会死。但你忽然明白，所谓"活着"，或许从来都是关于"被谁记得"。</p>`,
+    ],
+    reflect: "当科技模糊了生死的边界，「亲人」还成立吗？你用行动给出了回答：只要那份牵挂还在传递，载体是血肉还是代码，并不重要。",
+  },
+  E3: {
+    ending: "E3",
+    epilogue: [
+      `<p>战争以你所在阵营的胜利告终。你因卓越的"贡献"，被授予最高荣誉。</p>`,
+      `<p>授勋仪式上，灯光打在你脸上。你想起父亲的脸曾在你的瞄准镜里；想起哥哥的信号是怎样一个一个熄灭的；想起母亲那段备份，被你亲手归档为"已销毁的实验数据"。</p>`,
+      `<p>你赢了。你站在所有人的最高处。</p>`,
+      `<p class="dim">然后你回到空荡荡的住所，发现没有一个人，会在你回家时喊你的名字。</p>`,
+    ],
+    reflect: "你赢得了战争，输掉了所有亲人。忠诚是一种美德，但当它要求你献祭掉每一个具体的人，它究竟在效忠什么？荣誉，是否只是孤独的另一个名字？",
+  },
+  E4: {
+    ending: "E4",
+    epilogue: [
+      `<p>为了在战争里活下去、变强，你一次又一次地上传、覆写、优化自己的意识。你删掉了恐惧，删掉了犹豫，删掉了那些"拖后腿"的情感。</p>`,
+      `<p>最终，你成了战场上最高效的存在。没有人能击败你，因为你已经不再害怕失去任何东西。</p>`,
+      `<p>某天，系统例行询问身份核验。你下意识地想报出名字，却发现——你记不起"林深"是谁了。那只是一个很久以前、被你判定为冗余而删除的字符串。</p>`,
+      `<p class="dim">你赢得了不死，代价是，再没有一个"你"，能享受这份不死。</p>`,
+    ],
+    reflect: "当你可以任意编辑自己，「你」还剩下什么？那些看似软弱的恐惧与眷恋，或许正是把一段意识锚定为「一个人」的东西。删光了它们，你便不再是任何人。",
+  },
+  E5: {
+    ending: "E5",
+    epilogue: [
+      `<p>战争没有因为你而结束，也没有因为你而升级。你做了你能做的那件小事——让一些士兵，在某个瞬间，想起了自己是谁。</p>`,
+      `<p>有人因此活了下来，有人因此崩溃。你救了一些人，也无意间害了另一些。账，你算不清。</p>`,
+      `<p>战后没有人记得你的名字。你既没被当成英雄，也没被当成叛徒。你只是回到人群里，成为无数个"做过一点事、又没能做更多"的普通人之一。</p>`,
+      `<p class="dim">夜里你偶尔会想：如果当初赌得更大一点，会不会不一样？但你永远不会知道答案了。</p>`,
+    ],
+    reflect: "不是每个选择都通向英雄或恶魔。大多数人，只是在巨大的时代里，做了一点力所能及的、对错难辨的小事。这种「不彻底」，或许才是真实的人生。",
+  },
+  E6: {
+    ending: "E6",
+    epilogue: [
+      `<p>你删掉了接口里的一切——哥哥的程序、母亲的残响、所有关于这场战争的记录。然后你离开，去了一个谁也不认识你的地方。</p>`,
+      `<p>你不再上网，不再过问前线，不再回应任何带着"立场"的呼唤。当所有人都坚信自己站在正义一方、并以此互相残杀时，你选择了不站。</p>`,
+      `<p>有人会说你懦弱，是逃兵。但你想，当每一种"参与"都意味着帮某一方杀人时，"不参与"或许是你能守住的、唯一的清白。</p>`,
+      `<p class="dim">很多年后，没人记得这场战争是怎么开始的。也没人记得，曾有一个叫林深的人，选择了归零。</p>`,
+    ],
+    reflect: "当对立双方都已陷入疯狂，拒绝选边算不算一种选择？归零没有拯救任何人，却也没有伤害任何人。在一个逼你作恶的世界里，独善其身，是怯懦，还是另一种艰难的勇气？",
+  },
+
+  /* 隐藏结局 E4 入口：在 net_in 后若过度依赖上传可触发，这里通过 refuse_backdoor 之外的反复上传埋点。
+     为保证 6 结局均可达，E4 由 save_brother 的极端变体触发——见下方特殊处理。 */
+};
+
+/* E4 触发：若玩家在 save_brother 后选择继续上传强化（额外分支） */
+NODES.save_brother.choices.push({
+  label: "既然意识可以拷贝，就不断上传强化自己，成为不败的存在。",
+  hint: "走向数字化的极端",
+  go: "E4",
+  fx: s => { s.uploaded = true; s.humanity -= 4; }
+});
+
+/* =========================================================
+   渲染引擎
+   ========================================================= */
+const app = document.getElementById("app");
+
+function go(nodeId) {
+  const node = NODES[nodeId];
+  if (!node) { console.error("缺失节点:", nodeId); return; }
+
+  // 路由节点：根据状态跳转
+  if (node.router) {
+    return go(node.router(state));
+  }
+  // 结局节点
+  if (node.ending) {
+    return renderEnding(node);
+  }
+  renderScene(node);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderScene(node) {
+  const choicesHtml = node.choices.map((c, i) => `
+    <button class="choice" data-i="${i}">
+      ${c.label}
+      ${c.hint ? `<span class="hint">› ${c.hint}</span>` : ""}
+    </button>
+  `).join("");
+
+  app.innerHTML = `
+    <div class="scene">
+      <div class="scene-tag">${node.tag || ""}</div>
+      <div class="scene-text">${node.text.join("")}</div>
+      <div class="prompt">${node.prompt || "你的选择——"}</div>
+      <div class="choices">${choicesHtml}</div>
+    </div>
+  `;
+
+  app.querySelectorAll(".choice").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const c = node.choices[Number(btn.dataset.i)];
+      if (c.fx) c.fx(state);
+      go(c.go);
+    });
+  });
+}
+
+function renderEnding(node) {
+  const e = ENDINGS[node.ending];
+  // 解锁
+  if (!unlocked.includes(node.ending)) {
+    unlocked.push(node.ending);
+    saveUnlocked(unlocked);
+    renderTopbar();
+  }
+
+  app.innerHTML = `
+    <div class="scene ending-screen ${e.type}">
+      <div class="verdict">${e.type === "good" ? "结局 · 微光" : e.type === "bad" ? "结局 · 深渊" : "结局 · 灰度"}</div>
+      <h1>${e.name}</h1>
+      <div class="epilogue">${node.epilogue.join("")}</div>
+      <div class="reflect">${e.blurb}<br><br>${node.reflect}</div>
+      <div class="actions">
+        <button class="btn" id="again">从头开始</button>
+        <button class="btn ghost" id="toTitle">返回标题</button>
+      </div>
+      ${renderGallery()}
+    </div>
+  `;
+  document.getElementById("again").addEventListener("click", startGame);
+  document.getElementById("toTitle").addEventListener("click", renderTitle);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderGallery() {
+  const cards = Object.keys(ENDINGS).map(key => {
+    const e = ENDINGS[key];
+    const isUnlocked = unlocked.includes(key);
+    return `
+      <div class="card ${isUnlocked ? "unlocked " + e.type : "locked"}">
+        <div class="ix">${key}</div>
+        <div class="nm">${isUnlocked ? e.name : "??????"}</div>
+        <div class="locktxt">${isUnlocked ? e.blurb : "尚未解锁"}</div>
+      </div>
+    `;
+  }).join("");
+  return `
+    <div class="gallery">
+      <h3>结局图鉴 · ${unlocked.length} / 6</h3>
+      <div class="gallery-grid">${cards}</div>
+    </div>
+  `;
+}
+
+/* ---------- 顶部进度条 ---------- */
+function renderTopbar() {
+  const pipsEl = document.getElementById("pips");
+  const order = ["E1","E2","E5","E6","E3","E4"]; // 视觉排布：好-灰-坏
+  pipsEl.innerHTML = order.map(key => {
+    const e = ENDINGS[key];
+    const on = unlocked.includes(key);
+    const cls = on ? (e.type === "good" ? "good" : e.type === "bad" ? "bad" : "gray") : "";
+    return `<div class="pip ${cls}" title="${on ? e.name : "未解锁"}"></div>`;
+  }).join("");
+  document.getElementById("count").textContent = unlocked.length;
+}
+
+/* ---------- 标题页 ---------- */
+function renderTitle() {
+  app.innerHTML = `
+    <div class="scene title-screen">
+      <div class="big">裂 痕</div>
+      <div class="sub">F R A C T U R E</div>
+      <div class="year">
+        公元 2049 年。台湾海峡的战火在第七天烧到台北。<br>
+        当国家被劈成两半，一个跨海的家庭，也走到了崩裂的边缘。<br>
+        脑机接口、数字生命、克隆士兵——科技给了人新的选择，<br>
+        也把最古老的难题，重新摆上了桌面：<br>
+        当家与国不能两全，你，会背叛谁？
+      </div>
+      <div class="roster">
+        <div class="rt">登场人物</div>
+        <div class="person"><b>林深</b>（你）<span> · 台北，颅内植有实验性脑机接口</span></div>
+        <div class="person"><b>林国栋</b>（父亲）<span> · 台北工程师，反战，握有"致盲"病毒</span></div>
+        <div class="person"><b>林屿</b>（哥哥）<span> · 对岸的数字生命研究员，被军方接管</span></div>
+        <div class="person"><b>母亲</b><span> · 已逝，仅余一段不完整的意识备份</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="begin">进入故事</button>
+        ${unlocked.length > 0 ? `<button class="btn ghost" id="seeGallery">查看结局图鉴</button>` : ""}
+      </div>
+    </div>
+  `;
+  document.getElementById("begin").addEventListener("click", startGame);
+  const sg = document.getElementById("seeGallery");
+  if (sg) sg.addEventListener("click", () => {
+    app.innerHTML = `<div class="scene">${renderGallery()}
+      <div class="actions"><button class="btn ghost" id="back">返回标题</button></div></div>`;
+    document.getElementById("back").addEventListener("click", renderTitle);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- 启动 ---------- */
+function startGame() {
+  resetState();
+  go("start");
+}
+
+renderTopbar();
+renderTitle();
+</script>
+</body>
+</html>
